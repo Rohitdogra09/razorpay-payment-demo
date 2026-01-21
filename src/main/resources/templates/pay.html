@@ -1,0 +1,85 @@
+<!doctype html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Stripe Demo Payment</title>
+    <script src="https://js.stripe.com/v3/"></script>
+</head>
+<body style="font-family: Arial; max-width: 600px; margin: 40px auto;">
+<h2>Stripe Demo Payment</h2>
+
+<label>Booking ID:</label>
+<input id="bookingId" type="number" placeholder="e.g. 3"/>
+<button id="createIntentBtn">Create Payment</button>
+
+<hr/>
+
+<div id="payment-section" style="display:none;">
+    <h3>Card Payment</h3>
+    <div id="payment-element"></div>
+    <button id="payBtn">Pay</button>
+</div>
+
+<p id="msg" style="margin-top: 20px;"></p>
+
+<script th:inline="javascript">
+    const publishableKey = [[${stripePublishableKey}]];
+    const stripe = Stripe(publishableKey);
+
+    let elements;
+    let clientSecret;
+
+    const msg = (text) => document.getElementById("msg").innerText = text;
+
+    document.getElementById("createIntentBtn").addEventListener("click", async () => {
+        const bookingId = document.getElementById("bookingId").value;
+        if (!bookingId) {
+            msg("Please enter bookingId");
+            return;
+        }
+
+        msg("Creating payment intent...");
+        const res = await fetch(`/api/payments/create-intent/${bookingId}`, { method: "POST" });
+        const data = await res.json();
+
+        if (!res.ok) {
+            msg("Error: " + (data.message || JSON.stringify(data)));
+            return;
+        }
+
+        clientSecret = data.clientSecret;
+
+        elements = stripe.elements({ clientSecret });
+        const paymentElement = elements.create("payment");
+        paymentElement.mount("#payment-element");
+
+        document.getElementById("payment-section").style.display = "block";
+        msg("Payment intent created. Enter test card details and click Pay.");
+    });
+
+    document.getElementById("payBtn").addEventListener("click", async () => {
+        msg("Processing payment...");
+
+        const { error } = await stripe.confirmPayment({
+            elements,
+            confirmParams: {
+                return_url: window.location.href
+            },
+            redirect: "if_required"
+        });
+
+        if (error) {
+            msg("Payment failed: " + error.message);
+        } else {
+            msg("Payment successful (Stripe confirmed). Next step: mark booking CONFIRMED from backend via webhook/verify.");
+        }
+    });
+</script>
+
+<p style="margin-top:30px;">
+    <b>Test card:</b> 4242 4242 4242 4242<br/>
+    Any future expiry, any 3-digit CVC.
+</p>
+
+</body>
+</html>
