@@ -46,14 +46,18 @@ public class BookingController {
     @GetMapping("/{id}")
     public ResponseEntity<?> getBooking(@PathVariable Long id) {
         return bookingRepository.findById(id)
-                .map(b -> ResponseEntity.ok(Map.of(
-                        "id", b.getId(),
-                        "productName", b.getProductName(),
-                        "amountPaise", b.getAmountPaise(),
-                        "status", b.getStatus().name(),
-                        "razorpayOrderId", b.getRazorpayOrderId(),
-                        "razorpayPaymentId", b.getRazorpayPaymentId()
-                )))
-                .orElse(ResponseEntity.notFound().build());
+                .<ResponseEntity<?>>map(b -> {
+                    java.util.Map<String, Object> resp = new java.util.HashMap<>();
+                    resp.put("id", b.getId());
+                    resp.put("productName", b.getProductName());
+                    resp.put("amountPaise", b.getAmountPaise());
+                    resp.put("status", b.getStatus() == null ? null : b.getStatus().name());
+                    resp.put("razorpayOrderId", b.getRazorpayOrderId());
+                    resp.put("razorpayPaymentId", b.getRazorpayPaymentId());
+                    resp.put("stripePaymentIntentId", b.getStripePaymentIntentId());
+                    resp.put("stripeClientSecret", b.getStripeClientSecret());
+                    return ResponseEntity.ok(resp);
+                })
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

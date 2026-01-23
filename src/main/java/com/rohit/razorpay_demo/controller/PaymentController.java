@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.awt.print.Book;
+
 import java.util.Map;
 
 @RestController
@@ -44,12 +44,12 @@ public class PaymentController {
             booking.setStatus(Booking.Status.PENDING_PAYMENT);
             bookingRepository.save(booking);
 
-            return ResponseEntity.ok(Map.of(
-                    "bookingId", booking.getId(),
-                    "status", booking.getStatus().name(),
-                    "paymentIntentId", intent.getId(),
-                    "clientSecret", intent.getClientSecret()
-            ));
+            java.util.Map<String, Object> resp = new java.util.HashMap<>();
+            resp.put("bookingId", booking.getId());
+            resp.put("status", booking.getStatus() == null ? null : booking.getStatus().name());
+            resp.put("paymentIntentId", intent.getId());
+            resp.put("clientSecret", intent.getClientSecret());
+            return ResponseEntity.ok(resp);
 
 
         } catch (Throwable t) {
