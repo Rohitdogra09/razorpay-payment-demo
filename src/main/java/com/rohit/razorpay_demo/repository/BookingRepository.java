@@ -9,3 +9,4 @@ public interface BookingRepository extends JpaRepository<Booking,Long> {
     Optional<Booking> findByRazorpayOrderId(String razorpayOrderId);
     Optional<Booking> findByStripePaymentIntentId(String stripePaymentIntentId);
 }
+
