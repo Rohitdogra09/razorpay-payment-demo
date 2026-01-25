@@ -2,25 +2,335 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Stripe Demo Payment</title>
     <script src="https://js.stripe.com/v3/"></script>
+
+    <style>
+        :root{
+          --bg:#0b1220;
+          --card:#101a33;
+          --muted:#93a4c7;
+          --text:#e9eefc;
+          --border:rgba(255,255,255,0.10);
+          --accent:#6ea8fe;
+          --accent2:#7cf0c9;
+          --danger:#ff6b6b;
+          --shadow: 0 18px 45px rgba(0,0,0,.45);
+          --radius:16px;
+        }
+
+        *{box-sizing:border-box}
+        body{
+          margin:0;
+          font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+          background: radial-gradient(1200px 600px at 20% 10%, rgba(110,168,254,.25), transparent 55%),
+                      radial-gradient(900px 500px at 80% 20%, rgba(124,240,201,.18), transparent 60%),
+                      var(--bg);
+          color:var(--text);
+          min-height:100vh;
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          padding:28px 16px;
+        }
+
+        .wrap{
+          width: 100%;
+          max-width: 860px;
+          display:grid;
+          gap:18px;
+          grid-template-columns: 1.1fr 0.9fr;
+        }
+
+        @media (max-width: 840px){
+          .wrap{ grid-template-columns: 1fr; }
+        }
+
+        .card{
+          background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+          border:1px solid var(--border);
+          border-radius: var(--radius);
+          box-shadow: var(--shadow);
+          padding: 22px;
+          overflow:hidden;
+          position:relative;
+        }
+
+        .card::before{
+          content:"";
+          position:absolute;
+          inset:-2px;
+          background: radial-gradient(600px 240px at 20% 0%, rgba(110,168,254,.25), transparent 60%),
+                      radial-gradient(520px 220px at 90% 20%, rgba(124,240,201,.18), transparent 65%);
+          pointer-events:none;
+          opacity:.9;
+          filter: blur(0px);
+        }
+
+        .card > *{ position:relative; }
+
+        .title{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:12px;
+          margin-bottom: 10px;
+        }
+
+        h2{
+          margin:0;
+          font-size: 20px;
+          letter-spacing:.2px;
+        }
+
+        .pill{
+          font-size:12px;
+          color: var(--muted);
+          padding:6px 10px;
+          border:1px solid var(--border);
+          border-radius:999px;
+          background: rgba(255,255,255,.04);
+          white-space:nowrap;
+        }
+
+        .sub{
+          margin: 0 0 14px;
+          color: var(--muted);
+          font-size: 13.5px;
+          line-height:1.4;
+        }
+
+        .field{
+          display:flex;
+          flex-direction:column;
+          gap:8px;
+          margin-top: 10px;
+        }
+
+        label{
+          color: var(--muted);
+          font-size: 13px;
+        }
+
+        input{
+          width:100%;
+          padding: 12px 12px;
+          border-radius: 12px;
+          border:1px solid var(--border);
+          outline:none;
+          background: rgba(10, 18, 36, .6);
+          color: var(--text);
+          font-size: 14px;
+        }
+
+        input:focus{
+          border-color: rgba(110,168,254,.55);
+          box-shadow: 0 0 0 4px rgba(110,168,254,.12);
+        }
+
+        .row{
+          display:flex;
+          gap:10px;
+          align-items:flex-end;
+          margin-top: 12px;
+        }
+
+        .row > *{ flex:1; }
+
+        .btn{
+          border:none;
+          border-radius: 12px;
+          padding: 12px 14px;
+          font-weight: 700;
+          cursor:pointer;
+          color:#081226;
+          background: linear-gradient(135deg, var(--accent), #a6c8ff);
+          transition: transform .08s ease, filter .2s ease, opacity .2s ease;
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          gap:10px;
+          white-space:nowrap;
+        }
+
+        .btn:active{ transform: translateY(1px); }
+        .btn:disabled{
+          opacity:.55;
+          cursor:not-allowed;
+          filter:saturate(.6);
+        }
+
+        .btn.secondary{
+          color: var(--text);
+          background: rgba(255,255,255,.06);
+          border: 1px solid var(--border);
+        }
+
+        .divider{
+          height:1px;
+          background: var(--border);
+          margin: 18px 0;
+        }
+
+        #payment-section{
+          display:none;
+          margin-top: 8px;
+        }
+
+        .hint{
+          color: var(--muted);
+          font-size: 12.5px;
+          line-height:1.45;
+          margin-top: 10px;
+        }
+
+        .msg{
+          margin-top: 14px;
+          padding: 12px 12px;
+          border-radius: 12px;
+          border:1px solid var(--border);
+          background: rgba(255,255,255,.04);
+          color: var(--text);
+          font-size: 13.5px;
+          line-height:1.4;
+          min-height: 46px;
+          display:flex;
+          align-items:center;
+          gap:10px;
+        }
+
+        .msg.good{
+          border-color: rgba(124,240,201,.35);
+          background: rgba(124,240,201,.08);
+        }
+        .msg.bad{
+          border-color: rgba(255,107,107,.35);
+          background: rgba(255,107,107,.08);
+        }
+
+        .mono{
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+          font-size: 12px;
+        }
+
+        .small-card{
+          padding: 18px;
+        }
+
+        .list{
+          display:flex;
+          flex-direction:column;
+          gap:10px;
+          margin-top: 10px;
+        }
+
+        .li{
+          padding: 12px;
+          border-radius: 12px;
+          border:1px solid var(--border);
+          background: rgba(255,255,255,.04);
+        }
+
+        .li b{ color: var(--text); }
+        .muted{ color: var(--muted); }
+
+        /* Stripe Payment Element container styling */
+        #payment-element{
+          padding: 14px;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          background: rgba(10, 18, 36, .55);
+        }
+
+        .spinner{
+          width:16px;height:16px;
+          border-radius:999px;
+          border:2px solid rgba(0,0,0,.25);
+          border-top-color: rgba(0,0,0,.75);
+          animation: spin .8s linear infinite;
+        }
+        @keyframes spin{ to{ transform: rotate(360deg);} }
+    </style>
 </head>
-<body style="font-family: Arial; max-width: 600px; margin: 40px auto;">
-<h2>Stripe Demo Payment</h2>
 
-<label>Booking ID:</label>
-<input id="bookingId" type="number" placeholder="e.g. 3"/>
-<button id="createIntentBtn">Create Payment</button>
+<body>
+<div class="wrap">
+    <!-- Left: Main payment card -->
+    <div class="card">
+        <div class="title">
+            <h2>Stripe Demo Payment</h2>
+            <span class="pill">PaymentIntent + Webhook</span>
+        </div>
+        <p class="sub">
+            Enter a <b>Booking ID</b>, create a payment intent, then pay using Stripe test card.
+            Your backend webhook will update the booking status to <b>CONFIRMED</b>.
+        </p>
 
-<hr/>
+        <div class="field">
+            <label for="bookingId">Booking ID</label>
+            <div class="row">
+                <input id="bookingId" type="number" placeholder="e.g. 11" min="1"/>
+                <button class="btn" id="createIntentBtn">
+                    <span id="createBtnText">Create Payment</span>
+                    <span id="createSpinner" class="spinner" style="display:none;"></span>
+                </button>
+            </div>
+        </div>
 
-<div id="payment-section" style="display:none;">
-    <h3>Card Payment</h3>
-    <div id="payment-element"></div>
-    <button id="payBtn">Pay</button>
+        <div class="divider"></div>
+
+        <div id="payment-section">
+            <h3 style="margin:0 0 10px; font-size:16px;">Card Payment</h3>
+            <div id="payment-element"></div>
+
+            <div class="row" style="margin-top:12px;">
+                <button class="btn secondary" id="resetBtn" type="button">Reset</button>
+                <button class="btn" id="payBtn" type="button">
+                    <span id="payBtnText">Pay Now</span>
+                    <span id="paySpinner" class="spinner" style="display:none;"></span>
+                </button>
+            </div>
+
+            <p class="hint">
+                Tip: Use test card <span class="mono">4242 4242 4242 4242</span>, any future expiry, any CVC.
+            </p>
+        </div>
+
+        <div id="msg" class="msg" role="status" aria-live="polite">
+            Ready. Create a payment intent to continue.
+        </div>
+    </div>
+
+    <!-- Right: Info card -->
+    <div class="card small-card">
+        <div class="title" style="margin-bottom:6px;">
+            <h2 style="font-size:16px; margin:0;">Test Info</h2>
+            <span class="pill">Local Dev</span>
+        </div>
+
+        <div class="list">
+            <div class="li">
+                <b>Webhook forwarding</b>
+                <div class="muted mono">stripe listen --forward-to http://localhost:8080/api/stripe/webhook</div>
+            </div>
+
+            <div class="li">
+                <b>Test card</b>
+                <div class="muted mono">4242 4242 4242 4242</div>
+                <div class="muted">Any future expiry • Any 3-digit CVC</div>
+            </div>
+
+            <div class="li">
+                <b>Flow</b>
+                <div class="muted">1) Create booking</div>
+                <div class="muted">2) Create intent</div>
+                <div class="muted">3) Pay</div>
+                <div class="muted">4) Webhook confirms booking</div>
+            </div>
+        </div>
+    </div>
 </div>
-
-<p id="msg" style="margin-top: 20px;"></p>
 
 <script th:inline="javascript">
     const publishableKey = [[${stripePublishableKey}]];
@@ -29,57 +339,121 @@
     let elements;
     let clientSecret;
 
-    const msg = (text) => document.getElementById("msg").innerText = text;
+    const msgEl = document.getElementById("msg");
+    const setMsg = (text, type) => {
+      msgEl.classList.remove("good", "bad");
+      if (type === "good") msgEl.classList.add("good");
+      if (type === "bad") msgEl.classList.add("bad");
+      msgEl.innerText = text;
+    };
+
+    const createBtn = document.getElementById("createIntentBtn");
+    const createSpinner = document.getElementById("createSpinner");
+    const createBtnText = document.getElementById("createBtnText");
+
+    const payBtn = document.getElementById("payBtn");
+    const paySpinner = document.getElementById("paySpinner");
+    const payBtnText = document.getElementById("payBtnText");
+
+    const paymentSection = document.getElementById("payment-section");
+    const resetBtn = document.getElementById("resetBtn");
+
+    const setLoading = (which, loading) => {
+      if (which === "create") {
+        createBtn.disabled = loading;
+        createSpinner.style.display = loading ? "inline-block" : "none";
+        createBtnText.innerText = loading ? "Creating..." : "Create Payment";
+      }
+      if (which === "pay") {
+        payBtn.disabled = loading;
+        paySpinner.style.display = loading ? "inline-block" : "none";
+        payBtnText.innerText = loading ? "Processing..." : "Pay Now";
+      }
+    };
+
+    const resetUI = () => {
+      // Unmount old element cleanly (avoid duplicates)
+      if (elements) {
+        try {
+          const pe = elements.getElement("payment");
+          if (pe) pe.unmount();
+        } catch (e) {}
+      }
+      elements = null;
+      clientSecret = null;
+      paymentSection.style.display = "none";
+      setMsg("Ready. Create a payment intent to continue.");
+      setLoading("create", false);
+      setLoading("pay", false);
+    };
 
     document.getElementById("createIntentBtn").addEventListener("click", async () => {
-        const bookingId = document.getElementById("bookingId").value;
-        if (!bookingId) {
-            msg("Please enter bookingId");
-            return;
-        }
+      const bookingId = document.getElementById("bookingId").value;
+      if (!bookingId) {
+        setMsg("Please enter a valid Booking ID.", "bad");
+        return;
+      }
 
-        msg("Creating payment intent...");
+      setLoading("create", true);
+      setMsg("Creating payment intent...");
+
+      try {
         const res = await fetch(`/api/payments/create-intent/${bookingId}`, { method: "POST" });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-            msg("Error: " + (data.message || JSON.stringify(data)));
-            return;
+          setMsg("Error: " + (data.message || JSON.stringify(data) || "Unknown error"), "bad");
+          setLoading("create", false);
+          return;
         }
 
         clientSecret = data.clientSecret;
 
+        // Mount Payment Element
         elements = stripe.elements({ clientSecret });
         const paymentElement = elements.create("payment");
         paymentElement.mount("#payment-element");
 
-        document.getElementById("payment-section").style.display = "block";
-        msg("Payment intent created. Enter test card details and click Pay.");
+        paymentSection.style.display = "block";
+        setMsg("Payment intent created. Enter test card details and click Pay.", "good");
+      } catch (err) {
+        setMsg("Error creating intent: " + (err?.message || err), "bad");
+      } finally {
+        setLoading("create", false);
+      }
     });
 
     document.getElementById("payBtn").addEventListener("click", async () => {
-        msg("Processing payment...");
+      if (!elements) {
+        setMsg("Please create a payment intent first.", "bad");
+        return;
+      }
 
+      setLoading("pay", true);
+      setMsg("Processing payment...");
+
+      try {
         const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-                return_url: window.location.href
-            },
-            redirect: "if_required"
+          elements,
+          confirmParams: {
+            return_url: window.location.href
+          },
+          redirect: "if_required"
         });
 
         if (error) {
-            msg("Payment failed: " + error.message);
+          setMsg("Payment failed: " + error.message, "bad");
         } else {
-            msg("Payment successful (Stripe confirmed). Next step: mark booking CONFIRMED from backend via webhook/verify.");
+          setMsg("Payment confirmed by Stripe ✅. Backend webhook will update booking to CONFIRMED.", "good");
         }
+      } catch (err) {
+        setMsg("Payment error: " + (err?.message || err), "bad");
+      } finally {
+        setLoading("pay", false);
+      }
     });
+
+    resetBtn.addEventListener("click", resetUI);
 </script>
-
-<p style="margin-top:30px;">
-    <b>Test card:</b> 4242 4242 4242 4242<br/>
-    Any future expiry, any 3-digit CVC.
-</p>
-
 </body>
 </html>
